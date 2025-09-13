@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Beauty Calculator — Playful & Mathematical (MediaPipe)</title>
+  <title>Beauty Calculator — Math Mode (MediaPipe)</title>
   <style>
     :root{--bg:#081026;--card:#0b1220;--accent:#7c3aed;--muted:#9ca3af}
     *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Helvetica,Arial}
@@ -12,7 +12,6 @@
     .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:14px;padding:18px;box-shadow:0 12px 40px rgba(2,6,23,0.7);border:1px solid rgba(255,255,255,0.03)}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px}
     header h1{margin:0;font-size:18px}
-    .modes{display:flex;gap:8px}
     .btn{padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,var(--accent),#4f46e5);border:none;color:white;cursor:pointer;font-weight:700}
     .content{display:grid;grid-template-columns:360px 1fr;gap:18px;margin-top:18px}
     .left{display:flex;flex-direction:column;gap:12px}
@@ -20,9 +19,7 @@
     .controls{display:flex;gap:8px}
     input[type=file]{display:none}
     .filebtn{padding:8px 10px;border-radius:10px;background:#0ea5a4;border:none;color:#042;cursor:pointer}
-    .sliders{display:flex;flex-direction:column;gap:10px}
-    label{font-size:13px;color:var(--muted);display:flex;justify-content:space-between}
-    input[type=range]{width:100%}
+    .small{font-size:12px;color:var(--muted)}
     .right{padding-left:6px}
     .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
     .gauge{width:200px;height:200px;border-radius:50%;display:flex;align-items:center;justify-content:center;position:relative;margin:auto}
@@ -31,8 +28,8 @@
     .bars{display:flex;flex-direction:column;gap:8px;margin-top:8px}
     .bar{height:12px;background:#0f1724;border-radius:8px;overflow:hidden}
     .bar > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#06b6d4,#7c3aed)}
-    .small{font-size:12px;color:var(--muted)}
     canvas{display:none}
+    video{max-width:100%;height:auto;border-radius:8px}
     @media (max-width:920px){.content{grid-template-columns:1fr}}
   </style>
 </head>
@@ -41,11 +38,11 @@
     <div class="card">
       <header>
         <div>
-          <h1>Beauty Calculator — Playful & Mathematical</h1>
-          <div class="small">Privacy-first: images are processed locally in your browser (MediaPipe FaceMesh used for landmarks).</div>
+          <h1>Beauty Calculator — Math Mode</h1>
+          <div class="small">Privacy-first: images and webcam frames are processed locally (MediaPipe FaceMesh).</div>
         </div>
-        <div class="modes">
-          <button id="modeToggle" class="btn">Switch to Math Mode</button>
+        <div>
+          <button id="helpBtn" class="btn">How to use</button>
         </div>
       </header>
 
@@ -59,21 +56,6 @@
             <button id="measureBtn" class="filebtn" style="background:#10b981">Measure</button>
           </div>
 
-          <div class="sliders" id="sliderPanel">
-            <div>
-              <label>Self-confidence <span id="confVal">70</span></label>
-              <input id="confidence" type="range" min="0" max="100" value="70">
-            </div>
-            <div>
-              <label>Lighting & Quality <span id="lightVal">60</span></label>
-              <input id="lighting" type="range" min="0" max="100" value="60">
-            </div>
-            <div>
-              <label>Style & Expression <span id="styleVal">65</span></label>
-              <input id="style" type="range" min="0" max="100" value="65">
-            </div>
-            <div class="small">Tip: Playful mode is for fun. Use Math Mode for landmark-based analysis.</div>
-          </div>
         </div>
 
         <div class="right">
@@ -85,7 +67,7 @@
                 <div class="small">/100</div>
               </div>
             </div>
-            <div id="message" class="small" style="margin-top:8px">Choose a mode and click Measure.</div>
+            <div id="message" class="small" style="margin-top:8px">Load an image or open webcam, then click Measure.</div>
           </div>
 
           <div class="panel" style="margin-top:12px">
@@ -107,10 +89,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
 
   <script>
-    // Modes: 'playful' or 'math'
-    let mode = 'playful';
-    const modeToggle = document.getElementById('modeToggle');
-    const sliderPanel = document.getElementById('sliderPanel');
+    // Elements
     const preview = document.getElementById('preview');
     const fileInput = document.getElementById('fileInput');
     const clearBtn = document.getElementById('clearBtn');
@@ -125,35 +104,10 @@
     const details = document.getElementById('details');
     const bars = document.getElementById('bars');
 
-    // Playful sliders
-    const confidence = document.getElementById('confidence');
-    const lighting = document.getElementById('lighting');
-    const style = document.getElementById('style');
-    const confVal = document.getElementById('confVal');
-    const lightVal = document.getElementById('lightVal');
-    const styleVal = document.getElementById('styleVal');
-
-    [confidence, lighting, style].forEach(inp=>{
-      inp.addEventListener('input', ()=>{ confVal.textContent = confidence.value; lightVal.textContent = lighting.value; styleVal.textContent = style.value; });
-    });
-
-    modeToggle.addEventListener('click', ()=>{
-      if(mode === 'playful'){ mode = 'math'; modeToggle.textContent = 'Switch to Playful Mode'; sliderPanel.style.display='none'; message.textContent='Math mode: use webcam or image and click Measure'; }
-      else{ mode='playful'; modeToggle.textContent='Switch to Math Mode'; sliderPanel.style.display='flex'; message.textContent='Playful mode: use sliders and optional image'; }
-    });
-
-    // Image handling
-    let imgData = null;
     let latestImageElement = null;
-    fileInput.addEventListener('change', (e)=>{
-      const f = e.target.files[0]; if(!f) return; const url = URL.createObjectURL(f); const img = new Image(); img.onload = ()=>{ latestImageElement = img; const target = 512; const scale = Math.min(target/img.naturalWidth, target/img.naturalHeight, 1); hidden.width = Math.round(img.naturalWidth*scale); hidden.height = Math.round(img.naturalHeight*scale); ctx.drawImage(img,0,0,hidden.width,hidden.height); try{ imgData = ctx.getImageData(0,0,hidden.width,hidden.height); }catch(e){ imgData=null; } preview.innerHTML=''; img.style.maxWidth='100%'; img.style.maxHeight='100%'; preview.appendChild(img); URL.revokeObjectURL(url); }; img.src = url; img.crossOrigin='anonymous'; });
-
-    clearBtn.addEventListener('click', ()=>{ preview.innerHTML='Drop image or <label for="fileInput" class="filebtn" style="display:inline-block;cursor:pointer">Choose</label>'; fileInput.value=''; imgData=null; latestImageElement=null; scoreText.textContent='—'; bars.innerHTML=''; details.textContent='—'; message.textContent='Cleared'; });
-
-    // Webcam start
-    camBtn.addEventListener('click', async ()=>{
-      try{ const s = await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}}); video.srcObject = s; video.style.display='block'; preview.innerHTML=''; preview.appendChild(video); video.onloadeddata = ()=>{ video.play(); } }catch(e){ alert('Camera error: '+e.message); }
-    });
+    let latestLandmarks = null;
+    let measureRequested = false;
+    let videoStream = null;
 
     // Utilities
     function clamp01(x){ return Math.max(0, Math.min(1, x)); }
@@ -161,34 +115,171 @@
     function mean(arr){ if(arr.length===0) return 0; return arr.reduce((a,b)=>a+b,0)/arr.length }
     function std(arr){ const m=mean(arr); return Math.sqrt(mean(arr.map(x=> (x-m)*(x-m) ))); }
 
-    // Simple image analyze for playful mode
-    function analyzeImageSimple(){ if(!imgData) return 0.5; const px = imgData.data; let sumLum=0, sumSq=0, n=imgData.width*imgData.height; for(let i=0;i<px.length;i+=4){ const r=px[i], g=px[i+1], b=px[i+2]; const lum = 0.2126*r + 0.7152*g + 0.0722*b; sumLum += lum; sumSq += lum*lum; } const meanLum = sumLum/n; const variance = Math.max(0, sumSq/n - meanLum*meanLum); const stdDev = Math.sqrt(variance); const normMean = meanLum/255; const normStd = Math.min(1, stdDev/60); return 0.6*normMean + 0.4*normStd; }
-
-    // Playful score compute
-    function playfulScore(){ const conf = Number(confidence.value)/100; const light = Number(lighting.value)/100; const styl = Number(style.value)/100; const imgFactor = analyzeImageSimple(); const raw = 0.35*conf + 0.25*light + 0.15*styl + 0.25*imgFactor; const score = Math.round(clamp01(raw)*100); return {score, contributions:{confidence:0.35*conf, lighting:0.25*light, style:0.15*styl, image:0.25*imgFactor}} }
-
-    // ---- MediaPipe math mode ----
-    // setup FaceMesh
-    const faceMesh = new FaceMesh({locateFile: (file)=> `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
-    faceMesh.setOptions({maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.6, minTrackingConfidence:0.5});
-    let latestLandmarks = null;
-
-    faceMesh.onResults((results)=>{
-      if(results.multiFaceLandmarks && results.multiFaceLandmarks.length>0){ latestLandmarks = results.multiFaceLandmarks[0]; details.textContent = `Landmarks detected: ${latestLandmarks.length}`; }
+    // Image handling
+    fileInput.addEventListener('change', (e)=>{
+      const f = e.target.files[0]; if(!f) return;
+      const url = URL.createObjectURL(f);
+      const img = new Image();
+      img.onload = ()=>{
+        latestImageElement = img;
+        // scale to fit hidden canvas but keep resolution for mediapipe
+        const target = 512;
+        const scale = Math.min(target/img.naturalWidth, target/img.naturalHeight, 1);
+        hidden.width = Math.round(img.naturalWidth*scale);
+        hidden.height = Math.round(img.naturalHeight*scale);
+        ctx.drawImage(img,0,0,hidden.width,hidden.height);
+        preview.innerHTML='';
+        img.style.maxWidth='100%';
+        img.style.maxHeight='100%';
+        preview.appendChild(img);
+        URL.revokeObjectURL(url);
+        message.textContent = 'Image loaded. Click Measure.';
+      };
+      img.src = url;
+      img.crossOrigin = 'anonymous';
     });
 
-    // draw frame into canvas and send to mediapipe
-    async function sendFrameToFaceMesh(){ if(latestImageElement){ ctx.drawImage(latestImageElement,0,0,hidden.width,hidden.height); await faceMesh.send({image: hidden}); }
-      else if(video && video.srcObject){ ctx.drawImage(video,0,0,hidden.width,hidden.height); await faceMesh.send({image: hidden}); }
+    clearBtn.addEventListener('click', ()=>{
+      preview.innerHTML='Drop image or <label for="fileInput" class="filebtn" style="display:inline-block;cursor:pointer">Choose</label><br><span class="small">or press <button id="camBtn" class="filebtn">Webcam</button></span>';
+      fileInput.value='';
+      latestImageElement=null;
+      latestLandmarks=null;
+      scoreText.textContent='—';
+      bars.innerHTML='';
+      details.textContent='—';
+      message.textContent='Cleared';
+      // stop webcam if running
+      if(videoStream){ videoStream.getTracks().forEach(t=>t.stop()); videoStream = null; video.style.display='none'; }
+    });
+
+    // Webcam start (sets hidden canvas to correct size after metadata)
+    camBtn.addEventListener('click', async ()=>{
+      try{
+        const s = await navigator.mediaDevices.getUserMedia({video:{width:640,height:480}});
+        videoStream = s;
+        video.srcObject = s;
+        video.style.display = 'block';
+        preview.innerHTML = '';
+        preview.appendChild(video);
+        video.onloadedmetadata = ()=>{
+          // set hidden canvas size to video frame size (max 640)
+          const w = video.videoWidth || 640;
+          const h = video.videoHeight || 480;
+          const scale = Math.min(512/w, 512/h, 1);
+          hidden.width = Math.round(w * scale);
+          hidden.height = Math.round(h * scale);
+          video.play();
+          message.textContent = 'Webcam ready. Click Measure or allow continuous detection.';
+        };
+      }catch(e){
+        alert('Camera error: '+e.message);
+      }
+    });
+
+    // ---- MediaPipe FaceMesh setup ----
+    const faceMesh = new FaceMesh({locateFile: (file)=> `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
+    faceMesh.setOptions({maxNumFaces:1, refineLandmarks:true, minDetectionConfidence:0.6, minTrackingConfidence:0.5});
+
+    faceMesh.onResults((results)=>{
+      if(results.multiFaceLandmarks && results.multiFaceLandmarks.length>0){
+        latestLandmarks = results.multiFaceLandmarks[0];
+        details.textContent = `Landmarks detected: ${latestLandmarks.length}`;
+        // If a measure was requested, compute score now
+        if(measureRequested){
+          measureRequested = false;
+          try{
+            const features = computeMathFeatures(latestLandmarks);
+            if(!features){ alert('Feature extraction failed'); return; }
+            const final = computeFinalScore(features);
+            scoreText.textContent = final.score;
+            details.innerHTML = `Math mode — detailed features below.<div class="small" style="margin-top:6px"><strong>Contributions:</strong><br/>` +
+              Object.keys(final.contribs).map(k=>`${k.replace(/_/g,' ')}: ${(final.contribs[k]*100).toFixed(1)}`).join('<br/>') + '</div>';
+            showBars(features);
+            needle.style.transform = `rotate(${ -90 + (final.score/100)*180 }deg)`;
+          }catch(err){
+            alert('Error while computing score: '+err.message);
+          }
+        }
+      } else {
+        latestLandmarks = null;
+        details.textContent = 'No face detected';
+      }
+    });
+
+    // draw current frame to hidden canvas and send to mediapipe
+    async function sendFrameOnce(){
+      try{
+        if(latestImageElement){
+          ctx.drawImage(latestImageElement,0,0,hidden.width,hidden.height);
+        } else if(video && video.srcObject){
+          // draw scaled frame from video into hidden canvas
+          ctx.drawImage(video,0,0,hidden.width,hidden.height);
+        } else {
+          return;
+        }
+        await faceMesh.send({image: hidden});
+      }catch(e){ /* ignore */ }
     }
 
-    // compute math-mode features (using landmark array normalized 0..1)
+    // Continuous detection loop (keeps latestLandmarks up to date when webcam running)
+    async function detectionLoop(){
+      try{
+        if(video && video.srcObject){
+          ctx.drawImage(video,0,0,hidden.width,hidden.height);
+          await faceMesh.send({image: hidden});
+        }
+        // If user provided a still image, don't spam requests; only update when they click Measure
+      }catch(e){}
+      requestAnimationFrame(detectionLoop);
+    }
+    detectionLoop();
+
+    // Measure button handling: either compute immediately if landmarks exist,
+    // or request a frame and set measureRequested so onResults will compute when ready.
+    measureBtn.addEventListener('click', async ()=>{
+      // draw current frame into canvas
+      if(latestImageElement){
+        ctx.drawImage(latestImageElement,0,0,hidden.width,hidden.height);
+      } else if(video && video.srcObject){
+        ctx.drawImage(video,0,0,hidden.width,hidden.height);
+      } else {
+        alert('No image or webcam present. Load an image or open webcam first.');
+        return;
+      }
+
+      // If we already have landmarks (recent), compute immediately
+      if(latestLandmarks){
+        try{
+          const features = computeMathFeatures(latestLandmarks);
+          if(!features){ alert('Feature extraction failed'); return; }
+          const final = computeFinalScore(features);
+          scoreText.textContent = final.score;
+          details.innerHTML = `Math mode — detailed features below.<div class="small" style="margin-top:6px"><strong>Contributions:</strong><br/>` +
+            Object.keys(final.contribs).map(k=>`${k.replace(/_/g,' ')}: ${(final.contribs[k]*100).toFixed(1)}`).join('<br/>') + '</div>';
+          showBars(features);
+          needle.style.transform = `rotate(${ -90 + (final.score/100)*180 }deg)`;
+        }catch(err){
+          alert('Error while computing score: '+err.message);
+        }
+      } else {
+        // ask mediapipe to process this frame; onResults will handle compute
+        measureRequested = true;
+        try{
+          await faceMesh.send({image: hidden});
+          // if onResults doesn't find face immediately, user will get an alert from onResults
+          // or they can re-try Measure after improving lighting/pose.
+        }catch(e){
+          measureRequested = false;
+          alert('FaceMesh processing error: ' + e.message);
+        }
+      }
+    });
+
+    // ---- Feature extraction + scoring (kept from your original logic) ----
     function computeMathFeatures(landmarks){
       if(!landmarks) return null;
-      // convert normalized to pixels based on hidden canvas
       const w = hidden.width, h = hidden.height;
       const pts = landmarks.map(p=>({x:p.x*w, y:p.y*h}));
-      // key points
       const leftEye = pts[33], rightEye = pts[263], chin = pts[152], hair = pts[10] || pts[10];
       const mouthLeft = pts[61], mouthRight = pts[291], mouthTop = pts[13], mouthBottom = pts[14];
       const jawLeft = pts[234], jawRight = pts[454];
@@ -206,9 +297,13 @@
       // texture: cheek patch
       const sx = Math.max(0, Math.round((leftEye.x + jawLeft.x)/2)); const sy = Math.max(0, Math.round((leftEye.y + jawLeft.y)/2)); const sw = Math.max(2, Math.min(w-1, Math.round(d_eo*1.1))); const sh = Math.max(2, Math.min(h-1, Math.round(d_eo*0.9)));
       let T = 0.6, C_uniform = 0.7, Q=0.6;
-      try{ const imageData = ctx.getImageData(sx, sy, sw, sh); // laplacian
-        const lap = laplacianVariance(imageData); T = clamp01(Math.exp(-lap/1000)); const lumArr=[]; for(let i=0;i<imageData.data.length;i+=4){ lumArr.push(0.2126*imageData.data[i]+0.7152*imageData.data[i+1]+0.0722*imageData.data[i+2]); } const muL = mean(lumArr)/255; const sigmaL = std(lumArr)/255; Q = clamp01(0.5*((muL-0.4)/0.6) + 0.5*(sigmaL/0.25)); // color
-        const vs=[]; for(let i=0;i<imageData.data.length;i+=4){ const hsv = rgbToHsv(imageData.data[i], imageData.data[i+1], imageData.data[i+2]); vs.push(hsv[2]); } C_uniform = clamp01(1 - (std(vs)/0.25)); }catch(e){ /* ignore */ }
+      try{
+        const imageData = ctx.getImageData(sx, sy, sw, sh);
+        const lap = laplacianVariance(imageData); T = clamp01(Math.exp(-lap/1000));
+        const lumArr=[]; for(let i=0;i<imageData.data.length;i+=4){ lumArr.push(0.2126*imageData.data[i]+0.7152*imageData.data[i+1]+0.0722*imageData.data[i+2]); }
+        const muL = mean(lumArr)/255; const sigmaL = std(lumArr)/255; Q = clamp01(0.5*((muL-0.4)/0.6) + 0.5*(sigmaL/0.25));
+        const vs=[]; for(let i=0;i<imageData.data.length;i+=4){ const hsv = rgbToHsv(imageData.data[i], imageData.data[i+1], imageData.data[i+2]); vs.push(hsv[2]); } C_uniform = clamp01(1 - (std(vs)/0.25));
+      }catch(e){ /* ignore if region invalid */ }
       // smile: lip gap + width
       const mouthOpen = distance(mouthTop, mouthBottom) / (distance(leftEye, rightEye)||1);
       const mouthWidth = distance(mouthLeft, mouthRight) / (distance(jawLeft, jawRight)||1);
@@ -220,7 +315,6 @@
       return {symmetry:S, averageness:A, golden:G, smoothness:T, color_uniform:C_uniform, image_quality:Q, smile:M_smile, eye_openness:EAR};
     }
 
-    // helper: laplacian variance
     function laplacianVariance(imgData){ const w=imgData.width, h=imgData.height, d=imgData.data; const gray=new Float32Array(w*h); for(let i=0,idx=0;i<d.length;i+=4,idx++){ gray[idx]=0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2]; } const K=[0,1,0,1,-4,1,0,1,0]; const out=new Float32Array(w*h); for(let y=1;y<h-1;y++){ for(let x=1;x<w-1;x++){ let s=0,k=0; for(let ky=-1;ky<=1;ky++) for(let kx=-1;kx<=1;kx++){ s+=gray[(y+ky)*w + (x+kx)]*K[k++]; } out[y*w+x]=s; }} const vals=[]; for(let i=0;i<out.length;i++) vals.push(out[i]); return std(vals); }
 
     function rgbToHsv(r,g,b){ r/=255;g/=255;b/=255; const max=Math.max(r,g,b), min=Math.min(r,g,b); let h=0,s=0,v=max; const d=max-min; s = max===0?0:d/max; if(d!==0){ switch(max){ case r: h = ((g-b)/d)%6; break; case g: h = (b-r)/d + 2; break; case b: h = (r-g)/d + 4; break;} h*=60; if(h<0) h+=360;} return [h,s,v]; }
@@ -231,34 +325,12 @@
     const WEIGHTS = {symmetry:0.15, averageness:0.10, golden:0.10, smoothness:0.20, color_uniform:0.10, image_quality:0.05, smile:0.20, eye_openness:0.10};
     function computeFinalScore(features){ let s=0; let contribs={}; let sumW=0; for(const k in WEIGHTS){ const w=WEIGHTS[k]; const v=features[k]||0; contribs[k]=w*v; s+=contribs[k]; sumW+=w; } s/=sumW; const score = Math.round(100 * (1/(1+Math.exp(-6*(s-0.5))))); return {score, s, contribs}; }
 
-    // UI helpers
     function showBars(features){ bars.innerHTML=''; for(const k in features){ const v=features[k]; const outer=document.createElement('div'); outer.style.margin='8px 0'; outer.innerHTML = `<div style="display:flex;justify-content:space-between;margin-bottom:6px"><div class="small">${k.replace(/_/g,' ')}</div><div class="small">${(v*100).toFixed(0)}%</div></div><div class="bar"><i style="width:${(v*100)}%"></i></div>`; bars.appendChild(outer); } }
 
-    // Measure button handler
-    measureBtn.addEventListener('click', async ()=>{
-      // draw current frame
-      if(latestImageElement){ ctx.drawImage(latestImageElement,0,0,hidden.width,hidden.height); }
-      else if(video && video.srcObject){ ctx.drawImage(video,0,0,hidden.width,hidden.height); }
-
-      if(mode==='playful'){
-        const res = playfulScore(); scoreText.textContent = res.score; details.textContent = `Playful score — components shown below.`; showBars({confidence:res.contributions.confidence* (100/35), lighting:res.contributions.lighting*(100/25), style:res.contributions.style*(100/15), image:res.contributions.image*(100/25)}); needle.style.transform = `rotate(${ -90 + (res.score/100)*180 }deg)`;
-      } else {
-        // ensure face mesh has latest landmarks (send frame once and wait a bit)
-        try{ await faceMesh.send({image: hidden}); }catch(e){ /* ignore */ }
-        if(!latestLandmarks){ alert('No face detected — try a clearer frontal image or brighter light.'); return; }
-        const features = computeMathFeatures(latestLandmarks);
-        if(!features){ alert('Feature extraction failed'); return; }
-        const final = computeFinalScore(features);
-        scoreText.textContent = final.score; details.textContent = `Math mode — detailed features below.`; showBars(features); let html = '<div class="small"><strong>Contributions:</strong><br/>'; for(const k in final.contribs){ html += `${k.replace(/_/g,' ')}: ${(final.contribs[k]*100).toFixed(1)}<br/>`; } html += '</div>'; details.innerHTML += html; needle.style.transform = `rotate(${ -90 + (final.score/100)*180 }deg)`;
-      }
+    // Help button
+    document.getElementById('helpBtn').addEventListener('click', ()=>{
+      alert('How to use:\n1) Click Choose to load a frontal face image OR click Webcam and allow camera.\n2) Ensure face is frontal and well-lit.\n3) Click Measure — the app will process landmarks and show a score and feature breakdown.');
     });
-
-    // continuous detection for math mode
-    async function detectionLoop(){ if(mode==='math'){ try{ if(latestImageElement){ ctx.drawImage(latestImageElement,0,0,hidden.width,hidden.height); await faceMesh.send({image: hidden}); }
-          else if(video && video.srcObject){ ctx.drawImage(video,0,0,hidden.width,hidden.height); await faceMesh.send({image: hidden}); } }catch(e){} }
-      requestAnimationFrame(detectionLoop);
-    }
-    detectionLoop();
 
   </script>
 </body>
